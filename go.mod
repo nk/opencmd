@@ -1,4 +1,4 @@
-module opencmd
+module github.com/nk/opencmd
 
 go 1.18
 
