@@ -6,7 +6,8 @@ package cmd
 
 import (
 	"fmt"
-	"opencmd/config"
+
+	"github.com/nk/opencmd/config"
 
 	"github.com/spf13/cobra"
 )

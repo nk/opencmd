@@ -3,10 +3,11 @@ package command
 import (
 	"bufio"
 	"fmt"
-	"opencmd/config"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/nk/opencmd/config"
 )
 
 type Command struct {

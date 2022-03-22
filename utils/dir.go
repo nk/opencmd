@@ -2,9 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"opencmd/config"
 	"os"
 	"path/filepath"
+
+	"github.com/nk/opencmd/config"
 )
 
 // get current dir

@@ -5,8 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"opencmd/utils"
-
+	"github.com/nk/opencmd/utils"
 	"github.com/spf13/cobra"
 )
 

@@ -1,6 +1,6 @@
 package main
 
-import "opencmd/cmd"
+import "github.com/nk/opencmd/cmd"
 
 func main() {
 	cmd.Execute()
