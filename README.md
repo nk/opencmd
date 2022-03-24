@@ -35,13 +35,13 @@ opencmd 试图解决这个问题，基本上可以把它的运行方式描述为
 # 快速开始
 ## 安装
 
+1. 从 [下载页面](https://github.com/nk/opencmd/releases)下载所需平台的最新版本
+2. 解压并将opencmd文件移至/usr/bin
+
+另外，建议添加以下至shell配置
 ```
-curl "https://github.com/nk/opencmd/releases/download/v0.2.1/opencmd_0.2.1_linux_amd64.gz" |gunzip -c > /usr/local/bin/opencmd
-
-chmod a+x /usr/local/bin/opencmd
-
-echo 'alias oc="opencmd"' >> ~/.bashrc
-echo 'alias ocr="opencmd run"' >> ~/.bashrc
+alias oc="opencmd"
+alias ocr="opencmd run"
 ```
 
 ## 命令参考

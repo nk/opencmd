@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/nk/opencmd/command"
 	"github.com/nk/opencmd/config"
 )
 
@@ -57,19 +58,26 @@ func GetAllCommands() []string {
 	return AllCommands
 }
 
-func FindCommandByName(dir, cmd string) (string, error) {
+func FindCommandByName(dir, cmd string) (*command.Command, error) {
 	dirList := GetAllParentDir(dir)
-	for _, dir := range dirList {
-		command, err := FindCommandByNameInSingleDir(dir, cmd)
+	for _, currentDir := range dirList {
+		command_path, err := FindCommandByNameInSingleDir(currentDir, cmd)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		if command != "" {
-			return command, nil
+		if command_path != "" {
+			commandInfo := command.Command{
+				Name:        cmd,
+				Path:        command_path,
+				OpencmdBase: currentDir,
+			}
+			// return command, nil
+			return &commandInfo, nil
+
 		}
 	}
-	return "", fmt.Errorf("can not find command: %v", cmd)
+	return nil, fmt.Errorf("can not find command: %v", cmd)
 }
 
 func FindCommandByNameInSingleDir(dir, cmd string) (string, error) {

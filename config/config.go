@@ -1,5 +1,7 @@
 package config
 
+import "github.com/spf13/cobra"
+
 type Config struct {
 	OpencmdDir   string
 	CommandDir   string
@@ -12,4 +14,10 @@ var DefaultConfig = Config{
 	DefaultShell: "/bin/bash",
 }
 
-var Version = "0.2.1"
+var Version = "0.3.0"
+
+var CmdArgs *cobra.Command
+
+func GetCobraCmd() *cobra.Command {
+	return CmdArgs
+}

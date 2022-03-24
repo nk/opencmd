@@ -7,7 +7,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/nk/opencmd/command"
 	"github.com/nk/opencmd/utils"
 
 	"github.com/spf13/cobra"
@@ -24,17 +23,14 @@ var runCmd = &cobra.Command{
 		// fixme: set working directory
 		// fixme: 同.opencmd目录下有两个同名命令的处理
 
-		commandPath, err := utils.FindCommandByName(
+		commandInfo, err := utils.FindCommandByName(
 			utils.GetCurrentDir(), args[0])
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		cmdInfo := &command.Command{
-			Name: args[0],
-			Path: commandPath,
-		}
-		output, runErr := cmdInfo.Run()
+
+		output, runErr := commandInfo.Run()
 		if runErr != nil {
 			fmt.Println(runErr)
 		}

@@ -11,11 +11,19 @@ import (
 )
 
 type Command struct {
-	Name   string
-	Path   string
-	Done   bool
-	Output string
-	Err    error
+	Name        string // 名称
+	Path        string // 完整路径
+	OpencmdBase string // .opencmd目录所在的路径，一般为项目根目录
+
+	Done   bool   // 是否已经执行
+	Output string // 运行结束后的输出
+	Err    error  // 运行结束后的错误
+}
+
+type ExecParams struct {
+	Name       string
+	Args       []string
+	WorkingDir string
 }
 
 func (cmd *Command) Run() (string, error) {
@@ -44,6 +52,14 @@ func (cmd *Command) Run() (string, error) {
 	return cmd.Output, cmd.Err
 }
 
+func (cmd *Command) RunCommandWithParams(params *ExecParams) (string, error) {
+
+	execCmd := exec.Command(params.Name, params.Args...)
+	execCmd.Dir = params.WorkingDir
+	out, err := execCmd.CombinedOutput()
+	return string(out), err
+}
+
 func (cmd *Command) RunCommandDirectly() (string, error) {
 	perm, err := HasExecPermition(cmd.Path)
 	if err != nil {
@@ -58,10 +74,13 @@ func (cmd *Command) RunCommandDirectly() (string, error) {
 		return "", err
 	}
 
-	// fmt.Println("run command [direct]:", cmd.Path)
-	execCmd := exec.Command(cmd.Path)
-	out, err := execCmd.CombinedOutput()
-	return string(out), err
+	// fixme: 只有指定了参数时才会把workingdir 设为OpencmdBase
+	cmdParams := ExecParams{
+		Name:       cmd.Path,
+		Args:       []string{},
+		WorkingDir: cmd.OpencmdBase,
+	}
+	return cmd.RunCommandWithParams(&cmdParams)
 }
 
 func (cmd *Command) RunCommandViaShebang() (string, error) {
@@ -75,9 +94,13 @@ func (cmd *Command) RunCommandViaShebang() (string, error) {
 	shebang_list := strings.Split(shebang, " ")
 	shebang_list = append(shebang_list, cmd.Path)
 
-	execCmd := exec.Command(shebang_list[0], shebang_list[1:]...)
-	out, err := execCmd.CombinedOutput()
-	return string(out), nil
+	// fixme: 只有指定了参数时才会把workingdir 设为OpencmdBase
+	cmdParams := ExecParams{
+		Name:       shebang_list[0],
+		Args:       shebang_list[1:],
+		WorkingDir: cmd.OpencmdBase,
+	}
+	return cmd.RunCommandWithParams(&cmdParams)
 }
 
 func (cmd *Command) RunCommandUseDefaultShell() (string, error) {
@@ -89,9 +112,13 @@ func (cmd *Command) RunCommandUseDefaultShell() (string, error) {
 		shell = "/bin/bash"
 	}
 
-	execCmd := exec.Command(shell, cmd.Path)
-	out, err := execCmd.CombinedOutput()
-	return string(out), err
+	// fixme: 只有指定了参数时才会把workingdir 设为OpencmdBase
+	cmdParams := ExecParams{
+		Name:       shell,
+		Args:       []string{cmd.Path},
+		WorkingDir: cmd.OpencmdBase,
+	}
+	return cmd.RunCommandWithParams(&cmdParams)
 }
 
 func GetShebang(file string) (string, error) {
