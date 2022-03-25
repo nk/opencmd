@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.3.1 - 2022-03-25
+### Fixed
+- Fix the bug of multiple command execution.
+- Fix the bug that some commands fail to get shell
+
 ## 0.3.0 - 2022-03-25
 ### Changed
 - Set the working directory to the directory where ".opencmd" is located when executing the script
