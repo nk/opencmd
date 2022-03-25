@@ -3,6 +3,7 @@ package command
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -20,60 +21,107 @@ type Command struct {
 	Err    error  // 运行结束后的错误
 }
 
+type CommandMeta struct {
+	IsBin            bool
+	Shebang          string
+	HasExecPermition bool
+}
+
 type ExecParams struct {
 	Name       string
 	Args       []string
 	WorkingDir string
 }
 
-func (cmd *Command) Run() (string, error) {
-
-	funcArray := []func() (string, error){
-		cmd.RunCommandDirectly,
-		cmd.RunCommandViaShebang,
-		cmd.RunCommandUseDefaultShell,
+func (cmd *Command) Run() error {
+	commandMeta, err := cmd.GetCommandMeta()
+	if err != nil {
+		return err
 	}
 
-	for _, f := range funcArray {
-		// 防止由于错误导致执行多次
-		if cmd.Done {
-			break
-		}
-
-		out, err := f()
-		if err != nil {
-			cmd.Output = out
-			cmd.Err = err
-			continue
-		}
-		cmd.Done = true
-		return out, nil
-	}
-	return cmd.Output, cmd.Err
+	return cmd.RunCommandWithMeta(commandMeta)
 }
 
-func (cmd *Command) RunCommandWithParams(params *ExecParams) (string, error) {
+func (cmd *Command) RunCommandWithMeta(meta *CommandMeta) error {
+	if meta.IsBin {
+		// 二进制文件
+		if !meta.HasExecPermition {
+			err := fmt.Errorf(
+				"You don't have permission to run this command: %v",
+				cmd.Path,
+			)
+			return err
+		}
+		return cmd.RunCommandDirectly()
+	} else {
+		if meta.Shebang != "" {
+			// 有shebang, 不管有没有可执行权限，都使用shebang执行
+			// 如果有shebang同时有可执行权限，直接执行和使用shebang执行的结果一样
+			return cmd.RunCommandViaShebang()
+		} else {
+			// 没有shebang，不管有没有可执行权限，都使用默认shell
+			return cmd.RunCommandUseDefaultShell()
+		}
+	}
+}
+
+func (cmd *Command) GetCommandMeta() (*CommandMeta, error) {
+	meta := &CommandMeta{}
+
+	isBin, err := IsBinaryFile(cmd.Path)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	shebang, err := GetShebang(cmd.Path)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	hasExecPermition, err := HasExecPermition(cmd.Path)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	meta.IsBin = isBin
+	meta.Shebang = shebang
+	meta.HasExecPermition = hasExecPermition
+
+	// fmt.Printf("command meta: %+v\n", meta)
+	return meta, nil
+}
+
+func (cmd *Command) RunCommandWithParams(params *ExecParams) error {
 
 	execCmd := exec.Command(params.Name, params.Args...)
 	execCmd.Dir = params.WorkingDir
-	out, err := execCmd.CombinedOutput()
-	return string(out), err
+	execCmd.Stdout = os.Stdout
+	execCmd.Stdin = os.Stdin
+	execCmd.Stderr = os.Stderr
+	execCmd.Env = os.Environ()
+	err := execCmd.Run()
+	if err != nil {
+		fmt.Println("run command [err]:", err)
+	}
+	return err
 }
 
-func (cmd *Command) RunCommandDirectly() (string, error) {
+func (cmd *Command) RunCommandDirectly() error {
 	perm, err := HasExecPermition(cmd.Path)
 	if err != nil {
 		fmt.Println(err)
-		return "", err
+		return err
 	}
 	if !perm {
 		err = fmt.Errorf(
 			"You don't have permission to run this command: %v",
 			cmd.Path,
 		)
-		return "", err
+		return err
 	}
-
+	// fmt.Println("run command [direct]:", cmd.Path)
 	// fixme: 只有指定了参数时才会把workingdir 设为OpencmdBase
 	cmdParams := ExecParams{
 		Name:       cmd.Path,
@@ -83,13 +131,16 @@ func (cmd *Command) RunCommandDirectly() (string, error) {
 	return cmd.RunCommandWithParams(&cmdParams)
 }
 
-func (cmd *Command) RunCommandViaShebang() (string, error) {
+func (cmd *Command) RunCommandViaShebang() error {
 	shebang, err := GetShebang(cmd.Path)
 	if err != nil {
-		return "", err
+		return err
 	}
-
 	// fmt.Println("run command [shebang]:", cmd.Path, " ", shebang)
+	if shebang == "" {
+		err = fmt.Errorf("%v has no shebang", cmd.Path)
+		return err
+	}
 
 	shebang_list := strings.Split(shebang, " ")
 	shebang_list = append(shebang_list, cmd.Path)
@@ -103,7 +154,7 @@ func (cmd *Command) RunCommandViaShebang() (string, error) {
 	return cmd.RunCommandWithParams(&cmdParams)
 }
 
-func (cmd *Command) RunCommandUseDefaultShell() (string, error) {
+func (cmd *Command) RunCommandUseDefaultShell() error {
 	shell := config.DefaultConfig.DefaultShell
 	if shell == "" {
 		shell = os.Getenv("SHELL")
@@ -112,6 +163,7 @@ func (cmd *Command) RunCommandUseDefaultShell() (string, error) {
 		shell = "/bin/bash"
 	}
 
+	// fmt.Println("run command [shell]:", shell, cmd.Path)
 	// fixme: 只有指定了参数时才会把workingdir 设为OpencmdBase
 	cmdParams := ExecParams{
 		Name:       shell,
@@ -126,9 +178,10 @@ func GetShebang(file string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	hasShebang := strings.HasPrefix(firstLine, "#!")
 	if !hasShebang {
-		return "", fmt.Errorf("%v has no shebang", file)
+		return "", nil
 	}
 
 	shebang := strings.TrimPrefix(firstLine, "#!")
@@ -171,4 +224,40 @@ func HasExecPermition(path string) (bool, error) {
 	}
 
 	return fi.Mode().Perm()&0100 != 0, nil
+}
+
+func IsBinaryFile(file string) (bool, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	buf := make([]byte, 512)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	return !isText(buf[:n]), nil
+}
+
+// check file is binary or text
+func isText(data []byte) bool {
+	if len(data) == 0 {
+		return true
+	}
+
+	isText := true
+	for _, b := range data {
+		if b == 0 {
+			return false
+		}
+		if b < 32 && b != '\n' && b != '\r' && b != '\t' {
+			isText = false
+			break
+		}
+	}
+
+	return isText
 }

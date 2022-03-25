@@ -14,7 +14,7 @@ var DefaultConfig = Config{
 	DefaultShell: "/bin/bash",
 }
 
-var Version = "0.3.0"
+var Version = "0.3.1"
 
 var CmdArgs *cobra.Command
 

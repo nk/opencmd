@@ -30,11 +30,10 @@ var runCmd = &cobra.Command{
 			return
 		}
 
-		output, runErr := commandInfo.Run()
+		runErr := commandInfo.Run()
 		if runErr != nil {
-			fmt.Println(runErr)
+			fmt.Println("error:", runErr)
 		}
-		fmt.Println(output)
 	},
 }
 
